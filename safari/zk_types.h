@@ -59,11 +59,11 @@ struct ZRequestMessage {
 
   union {
     struct {
-      char data[];
+      char data[0];
     } ping;
     struct {
       uint64_t data_sz;
-      char data[];
+      char data[0];
     } create;
     struct {
       int64_t version;
@@ -75,7 +75,7 @@ struct ZRequestMessage {
     struct {
       int64_t version;
       uint64_t data_sz;
-      char data[];
+      char data[0];
     } set_data;
     struct {
     } get_children;
@@ -93,7 +93,7 @@ struct ZResponseMessage {
     struct {
     } header_end;
     struct {
-      char data[];
+      char data[0];
     } ping;
     struct {
     } create;
@@ -104,7 +104,7 @@ struct ZResponseMessage {
     struct {
       ZNodeStat stat;
       uint64_t data_sz;
-      char data[];
+      char data[0];
     } get_data;
     struct {
       ZNodeStat stat;

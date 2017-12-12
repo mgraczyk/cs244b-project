@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <string>
+#include <cstring>
 
 namespace safari {
 namespace {
@@ -16,7 +17,7 @@ using std::string;
 string sockaddr_to_string(const sockaddr_in& addr) {
   char buf[INET_ADDRSTRLEN];
   CHECK(inet_ntop(AF_INET, &addr, &buf[0], sizeof(buf)));
-  return string{buf, strlen(buf)} + ":" + std::to_string(addr.sin_port);
+  return string{buf, std::strlen(buf)} + ":" + std::to_string(addr.sin_port);
 }
 }  // namespace
 
@@ -32,7 +33,7 @@ class UDPMessage final {
                  reinterpret_cast<sockaddr*>(&addr_), &addrlen);
     CHECK(addrlen == sizeof(addr_));
     CHECK(recvlen > 0);
-    CHECK(recvlen < kBufferSize);
+    CHECK(recvlen < static_cast<ssize_t>(kBufferSize));
 
     size_ = recvlen;
     return size_;
@@ -43,7 +44,7 @@ class UDPMessage final {
     CHECK(size_ > 0);
     const auto bytes_sent =
         sendto(socket, buf_, size_, 0, (sockaddr*)&addr_, sizeof(addr_));
-    CHECK(bytes_sent == size_);
+    CHECK(bytes_sent == static_cast<ssize_t>(size_));
     return 1;
   }
 

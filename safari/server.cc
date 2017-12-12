@@ -13,6 +13,12 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <utility>
+#include <memory>
+
+
+#define offsetof(type, member) ((size_t)((&(((type*)(nullptr))->member))))
+
 
 namespace safari {
 namespace {
@@ -104,7 +110,7 @@ class ZResponse {
 class ZNode final {
  public:
   ZNode(string path, string data)
-      : path_{path}, data_{data}, stat_{.version = 0}, child_node_names_{} {}
+      : path_{path}, data_{data}, stat_{}, child_node_names_() {}
 
   ZNodeStat stat() const { return stat_; }
   const string& data_str() const { return data_; }
@@ -120,7 +126,7 @@ class ZNode final {
   string data_;
   ZNodeStat stat_;
 
-  std::set<const string> child_node_names_;
+  std::set<string> child_node_names_;
 };
 
 class ZTree final {
@@ -328,7 +334,7 @@ void Server::run_forever() {
         break;
       }
       default: {
-        printf("Got unknown message type: %llu\n", request.req().message_type);
+        printf("Got unknown message type: %llu\n", (long long unsigned int)request.req().message_type);
         response.reply_with(request, ZMessageErrorType::BadRequest);
         break;
       }
