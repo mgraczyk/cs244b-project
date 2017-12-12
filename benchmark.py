@@ -134,7 +134,7 @@ def main():
     zk_hosts = [
         '{}:2181'.format(zoo1), '{}:2181'.format(zoo2), '{}:2181'.format(zoo3)
     ]
-    zk_hosts = [
+    safari_hosts = [
         '{}:12000'.format(zoo1), '{}:12000'.format(zoo2),
         '{}:12000'.format(zoo3)
     ]
