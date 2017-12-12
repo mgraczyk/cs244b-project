@@ -6,8 +6,14 @@ import time
 import logging
 from tqdm import tqdm
 from kazoo.client import KazooClient
-from matplotlib import pyplot as plt
-import seaborn as sns
+
+try:
+  from matplotlib import pyplot as plt
+  import seaborn as sns
+  _DO_PLOTS = True
+except ImportError:
+  _DO_PLOTS = False
+  pass
 
 from safari.client import SafariClient
 
@@ -29,10 +35,6 @@ def test_latency(client):
   num_read_samples = 1000
   num_write_samples = 50
 
-  f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
-  for ax in (ax1, ax2, ax3):
-    ax.set_xscale('log')
-
   client.ensure_path('/latency_test/')
 
   node_data = [np.random.bytes(node_size) for _ in range(num_nodes)]
@@ -43,41 +45,36 @@ def test_latency(client):
 
   print('Testing Read Latency')
   samples = np.random.randint(num_nodes, size=(num_read_samples,)).tolist()
-  latencies = []
+  read_latencies = []
   get_func = client.get
   for s in tqdm(samples):
     before = now()
     result = get_func('/latency_test/node_{}'.format(s))
     after = now()
     assert result[0] == node_data[s], (s, result[0], node_data[s])
-    latencies.append(after - before)
+    read_latencies.append(after - before)
 
-  print_latencies(latencies)
-  sns.distplot(latencies, ax=ax1)
-  ax1.set_ylabel('Read')
+  print_latencies(read_latencies)
   print('')
 
 
   print('Testing Write Latency')
   samples = np.random.randint(num_nodes, size=(num_write_samples,)).tolist()
-  latencies = []
+  write_latencies = []
   set_func = client.set
   for s in tqdm(samples):
     data = np.random.bytes(node_size)
     before = now()
     result = set_func('/latency_test/node_{}'.format(s), data)
     after = now()
-    latencies.append(after - before)
-
-  print_latencies(latencies)
-  sns.distplot(latencies, ax=ax2)
-  ax2.set_ylabel('Write')
+    write_latencies.append(after - before)
+  print_latencies(write_latencies)
   print('')
 
 
   print('Testing Read Modify Write Latency')
   samples = np.random.randint(num_nodes, size=(num_read_samples, 2))
-  latencies = []
+  mixed_latencies = []
   for i in tqdm(range(samples.shape[0])):
     r, w = samples[i]
     before = now()
@@ -88,17 +85,29 @@ def test_latency(client):
       data = result[0] + b'x'
     set_func('/latency_test/node_{}'.format(w), data)
     after = now()
-    latencies.append(after - before)
-
-  print_latencies(latencies)
-  sns.distplot(latencies, ax=ax3)
-  ax3.set_ylabel('Mixed')
+    mixed_latencies.append(after - before)
+  print_latencies(mixed_latencies)
   print('')
 
-  f.subplots_adjust(hspace=0)
-  plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
-  ax3.set_xlabel('time (ms)')
-  return ax1
+  
+  if _DO_PLOTS:
+    f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
+    for ax in (ax1, ax2, ax3):
+      ax.set_xscale('log')
+      ax.set_xlim([5e-5, 5e-2])
+
+    sns.distplot(read_latencies, ax=ax1)
+    sns.distplot(write_latencies, ax=ax2)
+    sns.distplot(mixed_latencies, ax=ax3)
+
+    ax1.set_ylabel('Read')
+    ax2.set_ylabel('Write')
+    ax3.set_ylabel('Mixed')
+
+    f.subplots_adjust(hspace=0)
+    plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
+    ax3.set_xlabel('time (ms)')
+    return ax1
 
 def main():
   if len(sys.argv) < 2:
@@ -135,18 +144,19 @@ def main():
   print('Testing Zookeeper latency')
   zk = KazooClient(hosts=zk_hosts)
   zk.start()
-  f = test_latency(zk)
-  f.set_title('Zookeeper Latency')
+  zk_fig = test_latency(zk)
   print('')
 
   print('Testing Safari latency')
   sf = SafariClient(hosts=safari_hosts)
   sf.start()
-  f = test_latency(sf)
-  f.set_title('Safari Latency')
+  sf_fig = test_latency(sf)
   print('')
 
-  plt.show()
+  if _DO_PLOTS:
+    zk_fig.set_title('Zookeeper Latency')
+    sf_fig.set_title('Safari Latency')
+    plt.show()
 
 
 if __name__ == '__main__':
