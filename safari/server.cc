@@ -11,6 +11,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -23,6 +24,7 @@
 namespace safari {
 namespace {
 using std::map;
+using std::vector;
 
 std::pair<string, string> split_path(const string& path) {
   auto pos = path.rfind("/", 0);
@@ -34,6 +36,19 @@ std::pair<string, string> split_path(const string& path) {
     return {"/", path};
   }
 }
+
+vector<string> parse_comma_separated(const std::string& str) {
+  std::stringstream ss(str);
+  vector<string> result{};
+
+  string item;
+  while (ss.good()) {
+    getline(ss, item, ',');
+    result.push_back(item);
+  }
+  return result;
+}
+
 }  // namespace
 
 class ZRequest {
@@ -206,23 +221,28 @@ class ZTree final {
  private:
   ZTree(ZTree&) = delete;
 
-  std::map<string, ZNode> nodes_by_path_;
+  map<string, ZNode> nodes_by_path_;
 };
 
 class Server final {
  public:
   struct Args {
     static Args FromCommandLine(int argc, const char** argv) {
-      CHECK(argc == 2);
+      CHECK(argc == 3);
       auto result = Args{};
       result.port = string_to_int(argv[1]);
+      result.peer_addresses = parse_comma_separated(argv[2]);
       return result;
     }
 
     int port;
+    vector<string> peer_addresses;
   };
 
-  Server(Args args) : args_{args} {}
+  Server(Args args)
+      : args_{args},
+        num_nodes_{static_cast<int>(args.peer_addresses.size() + 1)},
+        quorum_size_{num_nodes_ / 2 + 1} {}
 
   void run_forever();
 
@@ -290,6 +310,8 @@ class Server final {
   }
 
   const Args args_;
+  const int num_nodes_;
+  const int quorum_size_;
   ZTree tree_;
 };
 
@@ -298,8 +320,15 @@ void Server::run_forever() {
   auto udp_message = std::make_unique<UDPMessage>();
   auto response_message = std::make_unique<UDPMessage>();
 
+  printf("Receiving on port %d with %zu peers ", args_.port,
+         args_.peer_addresses.size());
+  for (const auto& peer_address : args_.peer_addresses) {
+    printf("%s,\n", peer_address.c_str());
+  }
+  puts("");
+  printf("Quorum size is %d\n", quorum_size_);
+
   for (;;) {
-    dprintf("Receiving on port %d\n", args_.port);
     CHECK(udp_socket.receive_one(udp_message.get()));
     dprintf("Received %zu byte message from %s: \"%s\"\n", udp_message->size(),
             udp_message->addr_str().c_str(), udp_message->data_str().c_str());
