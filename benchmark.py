@@ -89,7 +89,7 @@ def test_latency(client):
   print_latencies(mixed_latencies)
   print('')
 
-  
+
   if _DO_PLOTS:
     f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
     for ax in (ax1, ax2, ax3):
@@ -118,13 +118,18 @@ def main():
     test = sys.argv[1]
 
   if sys.platform == 'darwin':
-    zoo1 = 'ec2-54-183-150-149.us-west-1.compute.amazonaws.com'
-    zoo2 = 'ec2-54-67-113-246.us-west-1.compute.amazonaws.com'
-    zoo3 = 'ec2-54-82-116-157.us-west-1.compute.amazonaws.com'
+    # zoo1 = 'ec2-54-183-150-149.us-west-1.compute.amazonaws.com'
+    # zoo2 = 'ec2-54-67-113-246.us-west-1.compute.amazonaws.com'
+    # zoo3 = 'ec2-54-82-116-157.us-west-1.compute.amazonaws.com'
+    zoo1 = '54.183.150.149'
+    zoo2 = '54.67.113.246'
+    zoo3 = '54.82.116.157'
+    zoo4 = '52.34.167.196'
   else:
     zoo1 = '172.31.7.146'
     zoo2 = '172.31.13.236'
     zoo3 = '54.82.116.157'
+    zoo4 = '52.34.167.196'
 
   if test == 'local':
     zk_hosts = ['127.0.0.1:2181', '127.0.0.1:2182', '127.0.0.1:2183']
@@ -138,6 +143,14 @@ def main():
     ]
     safari_hosts = [
         '{}:12000'.format(zoo1), '{}:12000'.format(zoo2),
+        '{}:12000'.format(zoo3)
+    ]
+  elif test == 'exp2':
+    zk_hosts = [
+        '{}:2181'.format(zoo4), '{}:2181'.format(zoo2), '{}:2181'.format(zoo3)
+    ]
+    safari_hosts = [
+        '{}:12000'.format(zoo4), '{}:12000'.format(zoo2),
         '{}:12000'.format(zoo3)
     ]
   else:
@@ -161,8 +174,8 @@ def main():
     plt.show()
   else:
     for name, results in (('zookeeper', zk_fig), ('safari', sf_fig)):
-        for kind, result in zip(('read', 'write', 'mixed'), results):
-            np.savetxt('{}.{}.csv'.format(name, kind), result, delimiter=',')
+      for kind, result in zip(('read', 'write', 'mixed'), results):
+        np.savetxt('{}.{}.csv'.format(name, kind), result, delimiter=',')
 
 if __name__ == '__main__':
   main()
