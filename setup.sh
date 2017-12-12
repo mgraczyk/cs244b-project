@@ -9,6 +9,7 @@ case "$(uname -s)" in
    Linux)
      echo 'Linux'
      yes |sudo yum install python36 gcc64 gcc64-c++ libstdc++64.x86_64
+     yes |sudo yum install java-1.8.0-openjdk.x86_64
      required_python_version="Python 3.6.2"
      ;;
 
@@ -21,6 +22,13 @@ case "$(uname -s)" in
      echo 'other OS'
      ;;
 esac
+
+if [ ! -d zookeeper ]; then
+    wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.11/zookeeper-3.4.11.tar.gz \
+	&& tar -xzf zookeeper-3.4.11.tar.gz \
+	&& mv zookeeper-3.4.11 zookeeper \
+	&& rm zookeeper-3.4.11.tar.gz
+fi
 
 
 python_version="$(python3 -V 2>&1)"
