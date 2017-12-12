@@ -108,6 +108,8 @@ def test_latency(client):
     plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
     ax3.set_xlabel('time (ms)')
     return ax1
+  else:
+    return (read_latencies, write_latencies, mixed_latencies)
 
 def main():
   if len(sys.argv) < 2:
@@ -157,7 +159,10 @@ def main():
     zk_fig.set_title('Zookeeper Latency')
     sf_fig.set_title('Safari Latency')
     plt.show()
-
+  else:
+    for name, results in (('zookeeper', zk_fig), ('safari', sf_fig)):
+        for kind, result in zip(('read', 'write', 'mixed'), results):
+            np.savetxt('{}.{}.csv'.format(name, kind), result, delimiter=',')
 
 if __name__ == '__main__':
   main()
