@@ -196,7 +196,6 @@ class SafariClient(object):
           request_id, error_type, message_type = (data[:8], data[8:16],
                                                   data[16:24])
           if request_id != id_bytes:
-            # TODO(mgraczyk): Ok to just discard?
             continue
 
           # Check whether we've received from this host in case of duplicate messages.
@@ -213,7 +212,7 @@ class SafariClient(object):
         assert all(vv == v[0]
                    for vv in v[1:]), {(b_to_uint(k[0]), b_to_uint(k[1])): v
                                       for k, v in results.items()}
-        return message_type, v[0]
+        return k[1], v[0]
     assert False, {(b_to_uint(k[0]), b_to_uint(k[1])): v
                    for k, v in results.items()}
 

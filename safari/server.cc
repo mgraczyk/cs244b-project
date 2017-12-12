@@ -9,16 +9,16 @@
 #include <cstdio>
 #include <cstdlib>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <unordered_set>
-#include <vector>
 #include <utility>
-#include <memory>
+#include <vector>
 
-
+#ifndef offsetof
 #define offsetof(type, member) ((size_t)((&(((type*)(nullptr))->member))))
-
+#endif
 
 namespace safari {
 namespace {
@@ -324,22 +324,27 @@ void Server::run_forever() {
         break;
       }
       case ZMessageType::GetData: {
-        dprintf("Got getData request\n");
+        dprintf("Got getData request with id %llu\n", request.req().id);
         get_data(request, &response);
         break;
       }
       case ZMessageType::SetData: {
-        dprintf("Got setData request\n");
+        dprintf("Got setData request with id %llu\n", request.req().id);
         set_data(request, &response);
         break;
       }
       default: {
-        printf("Got unknown message type: %llu\n", (long long unsigned int)request.req().message_type);
+        printf("Got unknown message type: %llu\n",
+               (long long unsigned int)request.req().message_type);
         response.reply_with(request, ZMessageErrorType::BadRequest);
         break;
       }
     }
     CHECK(udp_socket.send_one(response.udp_message()));
+
+    dprintf("Responding to request id %llu with %llu, response id %llu\n",
+            request.req().id, response.message()->message_type,
+            response.message()->request_id);
 
     udp_message = request.release_udp_message();
     response_message = response.release_udp_message();
