@@ -33,10 +33,12 @@ _MESSAGE_TYPE_SET_DATA_RESPONSE = struct.pack('<Q', 205)
 _MESSAGE_TYPE_ET_CHILDREN_RESPONSE = struct.pack('<Q', 206)
 _MESSAGE_TYPE_SYNC_RESPONSE = struct.pack('<Q', 207)
 
+_ERROR_TYPE_UNKNOWN = struct.pack('<Q', 1)
 _ERROR_TYPE_NO_ERROR = struct.pack('<Q', 1)
 _ERROR_TYPE_BAD_REQUEST = struct.pack('<Q', 2)
-_ERROR_TYPE_NODE_EXISTS = struct.pack('<Q', 3)
-_ERROR_TYPE_NO_NODE = struct.pack('<Q', 4)
+_ERROR_TYPE_NOT_IMPLEMENTED = struct.pack('<Q', 3)
+_ERROR_TYPE_NODE_EXISTS = struct.pack('<Q', 4)
+_ERROR_TYPE_NO_NODE = struct.pack('<Q', 5)
 
 
 class SafariException(Exception): pass
@@ -46,11 +48,12 @@ class NodeExistsError(SafariException): pass
 class NoNodeError(SafariException): pass
 
 _ERROR_TYPES_TO_EXCEPTION = {
-    struct.pack('<Q', 0): UnknownError,
-    struct.pack('<Q', 1): None,
-    struct.pack('<Q', 2): BadRequestError,
-    struct.pack('<Q', 3): NodeExistsError,
-    struct.pack('<Q', 4): NoNodeError
+    _ERROR_TYPE_UNKNOWN: UnknownError,
+    _ERROR_TYPE_NO_ERROR: None,
+    _ERROR_TYPE_BAD_REQUEST: BadRequestError,
+    _ERROR_TYPE_NOT_IMPLEMENTED: NotImplementedError,
+    _ERROR_TYPE_NODE_EXISTS: NodeExistsError,
+    _ERROR_TYPE_NO_NODE: NoNodeError
 }
 
 def _err_to_exception(err):
@@ -139,6 +142,12 @@ class SafariClient(object):
         pass
 
     return True
+
+  def exists(self, path):
+    message_type, data = self._do_send(_MESSAGE_TYPE_EXISTS, path)
+    assert_type(message_type, _MESSAGE_TYPE_EXISTS_RESPONSE)
+    exists = any(data[:8])
+    return exists
 
   def get(self, path):
     message_type, data = self._do_send(_MESSAGE_TYPE_GET_DATA, path)

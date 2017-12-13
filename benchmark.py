@@ -4,6 +4,7 @@ import kazoo
 import numpy as np
 import time
 import logging
+import subprocess
 from tqdm import tqdm
 from kazoo.client import KazooClient
 
@@ -28,12 +29,16 @@ def print_latencies(latencies_seconds):
   print('99.9% Latency =  {} ms'.format(np.percentile(latencies_ms, 99.9)))
 
 
-def test_latency(client):
+def test_latency(client_type, hosts):
+  client = client_type(hosts=hosts)
+  client.start()
+
   np.random.seed(1337)
   num_nodes = 5
   node_size = 100
   num_read_samples = 1000
   num_write_samples = 50
+  num_other_procs = 5
 
   client.ensure_path('/latency_test/')
 
@@ -73,6 +78,19 @@ def test_latency(client):
 
 
   print('Testing Read Modify Write Latency')
+  procs = [
+      subprocess.Popen(
+          [
+              sys.executable,
+              os.path.join(
+                  os.path.dirname(__file__), 'run_conflicting_client.py'),
+              client_type.__name__, ','.join(hosts),
+              str(num_nodes)
+          ],
+          close_fds=True) for _ in range(num_other_procs)
+  ]
+  time.sleep(2.)
+
   samples = np.random.randint(num_nodes, size=(num_read_samples, 2))
   mixed_latencies = []
   for i in tqdm(range(samples.shape[0])):
@@ -89,6 +107,10 @@ def test_latency(client):
   print_latencies(mixed_latencies)
   print('')
 
+  for proc in procs:
+    proc.terminate()
+  for proc in procs:
+    proc.wait()
 
   if _DO_PLOTS:
     f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
@@ -157,15 +179,11 @@ def main():
     raise NotImplementedError(test)
 
   print('Testing Zookeeper latency')
-  zk = KazooClient(hosts=zk_hosts)
-  zk.start()
-  zk_fig = test_latency(zk)
+  zk_fig = test_latency(KazooClient, zk_hosts)
   print('')
 
   print('Testing Safari latency')
-  sf = SafariClient(hosts=safari_hosts)
-  sf.start()
-  sf_fig = test_latency(sf)
+  sf_fig = test_latency(SafariClient, safari_hosts)
   print('')
 
   if _DO_PLOTS:

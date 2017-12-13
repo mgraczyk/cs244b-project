@@ -4,6 +4,7 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <cstdio>
@@ -44,7 +45,9 @@ vector<string> parse_comma_separated(const std::string& str) {
   string item;
   while (ss.good()) {
     getline(ss, item, ',');
-    result.push_back(item);
+    if (!item.empty()) {
+      result.emplace_back(std::move(item));
+    }
   }
   return result;
 }
@@ -242,7 +245,10 @@ class Server final {
   Server(Args args)
       : args_{args},
         num_nodes_{static_cast<int>(args.peer_addresses.size() + 1)},
-        quorum_size_{num_nodes_ / 2 + 1} {}
+        quorum_size_{num_nodes_ / 2 + 1},
+        txid_{0} {
+       (void)txid_;
+        }
 
   void run_forever();
 
@@ -273,6 +279,16 @@ class Server final {
     dprintf("Create %s ok\n", request.path().c_str());
     response->reply_with(request, ZMessageType::CreateResponse,
                          offsetof(ZResponseMessage, create));
+  }
+
+  void exists(const ZRequest& request, ZResponse* response) {
+    auto path = request.path();
+    const auto exists = tree_.path_exists(path);
+
+    response->reply_with(request, ZMessageType::ExistsResponse,
+                         offsetof(ZResponseMessage, exists.exists) +
+                             sizeof(ZResponseMessage::exists.exists));
+    response->message()->exists.exists = exists;
   }
 
   void get_data(const ZRequest& request, ZResponse* response) {
@@ -312,28 +328,30 @@ class Server final {
   const Args args_;
   const int num_nodes_;
   const int quorum_size_;
+  uint64_t txid_;
   ZTree tree_;
 };
 
 void Server::run_forever() {
-  UDPSocket udp_socket{args_.port};
-  auto udp_message = std::make_unique<UDPMessage>();
+  UDPSocket client_sock{args_.port};
+  auto request_message = std::make_unique<UDPMessage>();
   auto response_message = std::make_unique<UDPMessage>();
 
   printf("Receiving on port %d with %zu peers ", args_.port,
          args_.peer_addresses.size());
   for (const auto& peer_address : args_.peer_addresses) {
-    printf("%s,\n", peer_address.c_str());
+    printf("%s,", peer_address.c_str());
   }
   puts("");
   printf("Quorum size is %d\n", quorum_size_);
 
   for (;;) {
-    CHECK(udp_socket.receive_one(udp_message.get()));
-    dprintf("Received %zu byte message from %s: \"%s\"\n", udp_message->size(),
-            udp_message->addr_str().c_str(), udp_message->data_str().c_str());
+    CHECK(client_sock.receive_one(request_message.get()));
+    dprintf("Received %zu byte message from %s: \"%s\"\n",
+            request_message->size(), request_message->addr_str().c_str(),
+            request_message->data_str().c_str());
 
-    ZRequest request{std::move(udp_message)};
+    ZRequest request{std::move(request_message)};
     ZResponse response{std::move(response_message)};
 
     switch (request.req().message_type) {
@@ -349,7 +367,7 @@ void Server::run_forever() {
       }
       case ZMessageType::Exists: {
         dprintf("Got exists request\n");
-        CHECK(0);
+        exists(request, &response);
         break;
       }
       case ZMessageType::GetData: {
@@ -362,6 +380,21 @@ void Server::run_forever() {
         set_data(request, &response);
         break;
       }
+      case ZMessageType::Delete: {
+        dprintf("Got delete request with id %llu\n", request.req().id);
+        response.reply_with(request, ZMessageErrorType::NotImplemented);
+        break;
+      }
+      case ZMessageType::GetChildren: {
+        dprintf("Got getChildren request with id %llu\n", request.req().id);
+        response.reply_with(request, ZMessageErrorType::NotImplemented);
+        break;
+      }
+      case ZMessageType::Sync: {
+        dprintf("Got sync request with id %llu\n", request.req().id);
+        response.reply_with(request, ZMessageErrorType::NotImplemented);
+        break;
+      }
       default: {
         printf("Got unknown message type: %llu\n",
                (long long unsigned int)request.req().message_type);
@@ -369,13 +402,13 @@ void Server::run_forever() {
         break;
       }
     }
-    CHECK(udp_socket.send_one(response.udp_message()));
+    CHECK(client_sock.send_one(response.udp_message()));
 
     dprintf("Responding to request id %llu with %llu, response id %llu\n",
             request.req().id, response.message()->message_type,
             response.message()->request_id);
 
-    udp_message = request.release_udp_message();
+    request_message = request.release_udp_message();
     response_message = response.release_udp_message();
   }
 }

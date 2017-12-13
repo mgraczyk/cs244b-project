@@ -32,8 +32,9 @@ enum class ZMessageErrorType : uint64_t {
   Unknown,
   NoError = 1,
   BadRequest = 2,
-  NodeExists = 3,
-  NoNode = 4,
+  NotImplemented = 3,
+  NodeExists = 4,
+  NoNode = 5,
 };
 
 struct ZNodeStat {
@@ -100,6 +101,7 @@ struct ZResponseMessage {
     struct {
     } delete_cmd;
     struct {
+      uint64_t exists;
     } exists;
     struct {
       ZNodeStat stat;
