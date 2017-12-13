@@ -1,2 +1,30 @@
+Although our aspirations for Safari were higher, the system as currently implemented is extremely
+basic. Each server stores a copy of the ZooKeeper tree-of-znodes data structure. Clients modify
+state by sending a modification requests to all servers. Clients read state by requesting it from
+all servers, and returning the data to the client application once a majority of servers have
+returned the same value. All communication is done using UDP based message passing. That is, there
+is no connection state. Messages are currently restricted to fit in a single UDP packet, so znode
+data must be no greater than than $\approx 60kB$. We have not implemented watches or sequential
+znodes, but these would be easy to add the the existing system.
+
+Although we believe the system offers linearizable state changes, it is currently useless in
+practice. The system can quickly become unavailable when multiple clients make state modifications
+concurrently, especially when latencies are large. Although the system remained available during our
+local experiment, it frequently halted during our real-world deployment experiments. As a result,
+\textbf{Safari's latencies in these experiments should be interpreted as a lower bound on any
+ZooKeeper-like system.} Still, we believe that the reported read latencies are achievable because in
+most cases (ie, the network is not partitioned and servers have not failed) reads could behave
+exactly as they do in the current implementation even with changes to make the system more
+available.
+
+We had hoped to implement a leaderless consensus algorithm like AllConcur [10] to keep the system
+available and automatically resolve conflicts while preserving low latency. This would also decrease
+read latency because clients could deliever results to applications after receiving just one
+successful response, rather than waiting for a majority. However, we have not completed this
+implementation in yet.
+
 We defer most discussion of implementation details to a video describing the system [8] and the source
-code [9].
+code [9]. As implemented, the system does provides linearizable writes but often becomes permanently
+unavailable when multiple clients write concurrently. Additional message passing would be required
+to resolve these conflicts when they are detected, so the system's latency provides a loose lower
+bound on what could be expected from a ZooKeeper implementation with the same consistency.

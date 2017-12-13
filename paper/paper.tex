@@ -15,6 +15,7 @@
 
 %
 \documentclass[10pt,journal,compsoc,conference]{IEEEtran}
+\usepackage{placeins}
 % If IEEEtran.cls has not been installed into the LaTeX system files,
 % manually specify the path to it like:
 % \documentclass[10pt,journal,compsoc]{../sty/IEEEtran}
@@ -553,6 +554,14 @@ We also offer explanations for their performance differences and design tradeoff
 \section{Results and Evaluation}
 \input{results.tex}
 
+\section{Future Work}
+Safari is largely incomplete. Although the basic system is implemented, it
+quickly becomes unavailable because it does not automatically resolve conflicts
+during concurrent writes. This makes the system completely useless for anything
+besides providing a latency baseline for ZooKeeper. The system could be made
+more available by adding a leaderless atomic broadcast algorithm such as
+AllConcur [10] for resolving conflict.
+
 %\section{Conclusion}
 %\input{conclusion.tex}
 
@@ -568,6 +577,7 @@ We also offer explanations for their performance differences and design tradeoff
 %\IEEEtriggeratref{8}
 % The "triggered" command can be changed if desired:
 %\IEEEtriggercmd{\enlargethispage{-5in}}
+\FloatBarrier
 \nocite{*}
 \setlength\parindent{24pt}
 \def\bibindent{1em}
@@ -602,6 +612,10 @@ We also offer explanations for their performance differences and design tradeoff
 
   \bibitem{9}
   \texttt{https://github.com/mgraczyk/cs244b-project}
+
+  \bibitem{10}
+  \texttt{Poke et. al. "AllConcur: Leaderless Concurrent Atomic Broadcast (Extended Version)"
+	https://arxiv.org/abs/1608.05866}
 
 \end{thebibliography}
 

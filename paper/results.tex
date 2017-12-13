@@ -1,4 +1,12 @@
+Figures 1 through 6 show the latencies of the two systems under each of the nine tasks and
+experiments. Figure 7 shows the average, 99\%, and 99.9\% latencies for the mixed conflicting
+read-write task of each experiment.
 
+The results show that ZooKeeper has much lower latency for reads than writes. In addition, read
+latency during conflicting writes is significantly higher than Safari. We believe that ZooKeeper's
+read latency could be improved through the use of UDP instead of TCP, C++ instead of Java, and with
+clients sending requests to multiple servers and awaiting the first response rather than always
+using the same server.
 
 \begin{figure}[h]
   \caption{Zookeeper Latency on a Single Machine}
@@ -14,6 +22,31 @@
 
 
 \begin{figure}[h]
+  \caption{Zookeeper Latency Distributed Across Two Datacenters}
+  \centering
+  \includegraphics[width=0.5\textwidth]{../results/exp1/zookeeper.pdf}
+\end{figure}
+
+\begin{figure}[h]
+  \caption{Safari Latency Distributed Across Two Datacenters}
+  \centering
+  \includegraphics[width=0.5\textwidth]{../results/exp1/safari.pdf}
+\end{figure}
+
+\begin{figure}[h]
+  \caption{Zookeeper Latency Distributed Across Three Datacenters}
+  \centering
+  \includegraphics[width=0.5\textwidth]{../results/exp2/zookeeper.pdf}
+\end{figure}
+
+\begin{figure}[h]
+  \caption{Safari Latency Distributed Across Three Datacenters}
+  \centering
+  \includegraphics[width=0.5\textwidth]{../results/exp2/safari.pdf}
+\end{figure}
+
+
+\begin{figure}[h]
   \caption{Mixed Read-Write Latency Statistics (ms)}
   \begin{center}
     \begin{tabular}{| l | l | l | l |}
@@ -21,10 +54,10 @@
     & Average & 99\% & 99.9\% \\ \hline
     Local ZooKeeper & 13.414 & 26.090 & 33.073 \\ \hline
     Local Safari & 0.307 & 0.441 & 1.341 \\ \hline\hline
-    1 Datacenter ZooKeeper & 0 & 0 & 0 \\ \hline
-    1 Datacenter Safari & 0 & 0 & 0 \\ \hline\hline
-    2 Datacenters ZooKeeper & 0 & 0 & 0 \\ \hline
-    2 Datacenters Safari & 0 & 0 & 0 \\
+    2 Datacenter ZooKeeper & 148.230 & 272.393 & 279.877 \\ \hline
+    2 Datacenter Safari & 0.728 & 1.052 & 1.439 \\ \hline\hline
+    3 Datacenters ZooKeeper & 76.873 & 93.481 & 94.716 \\ \hline
+    3 Datacenters Safari & 45.981 & 46.391 & 47.748 \\
     \hline
     \end{tabular}
   \end{center}

@@ -1,0 +1,39 @@
+We tested ZooKeeper and Safari's latencies using three tasks under three experimental settings. In
+order to measure the relative overhead of the software implementations themselves, rather than the
+algorithms and their messaging latency, we first ran the client and servers on a single 2017 Macbook
+Pro. For the next two experiments, we deployed ZooKeeper and Safari on AWS EC2 $m3.xlarge$ instances
+with attached SSDs.
+
+In our second experiment, we ran the systems with two servers in the same west coast data center,
+and a third server on the east coast. The client was also located in the west coast data center.
+This experimental setup offers resiliance to the loss of a single machine in the west coast data
+center, or the entire east coast data center. In principle, a quorum system with this configuration
+should have low latency because the two colocated servers could commit writes as a quorum with low
+latency while the east coast data center operates as a follower.
+
+For the third and final experiment, we ran servers on three different data centers in Northern
+California, Oregon, and Virginia. The client also ran in Northern California. This setup offers
+resiliance to the loss of any data center, but any robust system must pass messages between
+datacenters to commit writes. Under these circumstances, systems which minimizes total sequential
+messages should have the best latencies.
+
+Each experiment consisted of three tasks run sequentially. In the first task, a single client
+creates 5 keys with 1000 bytes of data and reads data from a randomly selected key 1000 times. This
+tasks tests the systems' best case read latencies. In the second task, a single client creates 5
+keys and writes 1000 bytes to a randomly selected key 1000 times. Like the first task, this one
+tests the sytems' best case write latencies.
+
+The third and most important tasks consists of mixed, conflicting reads and writes.  We create 5
+keys with 1000 bytes of random data, then start 6 concurrent clients. Each client does the following
+as fast as possible.
+\begin{itemize}
+  \item Select a "read key" at random and read the data from this key.
+  \item Select a "write key" at random.
+  \item If the selected "read key" is even, write all but the last byte read to the "write key".
+  \item If the selected "read key" is odd, append a byte to the data and write it to the "write key".
+  \item Repeat the process indefinitely or 1000 times if this is the first client.
+\end{itemize}
+
+The above process simulates heavy read-write contention and should stress ZooKeeper because of its
+centralized leader. Even followers will be stressed because they will constantly receive updates
+from the Zab leader.

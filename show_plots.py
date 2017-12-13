@@ -13,14 +13,14 @@ def _load_data(experiment_name, name):
   return read_latencies, write_latencies, mixed_latencies
 
 
-def _show_for_type(experiment_name, name):
+def _show_for_type(experiment_name, name, lims):
   read_latencies, write_latencies, mixed_latencies = _load_data(
       experiment_name, name)
 
   f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
   for ax in (ax1, ax2, ax3):
     ax.set_xscale('log')
-    ax.set_xlim([5e-2, 5e1])
+    ax.set_xlim(lims)
 
   sns.distplot(read_latencies, ax=ax1)
   sns.distplot(write_latencies, ax=ax2)
@@ -37,11 +37,28 @@ def _show_for_type(experiment_name, name):
 
 if __name__ == '__main__':
   experiment_name = 'local'
-  zk_fig = _show_for_type('local', 'zookeeper')
+  zk_fig = _show_for_type('local', 'zookeeper', [5e-2, 5e1])
   with PdfPages('results/local/zookeeper.pdf'.format(experiment_name)) as pp:
     pp.savefig(zk_fig)
 
-  sf_fig = _show_for_type('local', 'safari')
+  sf_fig = _show_for_type('local', 'safari', [5e-2, 5e1])
   with PdfPages('results/local/safari.pdf'.format(experiment_name)) as pp:
     pp.savefig(sf_fig)
+
+  zk_fig = _show_for_type('exp1', 'zookeeper', [8e-2, 2e2])
+  with PdfPages('results/exp1/zookeeper.pdf'.format(experiment_name)) as pp:
+    pp.savefig(zk_fig)
+
+  sf_fig = _show_for_type('exp1', 'safari', [8e-2, 2e2])
+  with PdfPages('results/exp1/safari.pdf'.format(experiment_name)) as pp:
+    pp.savefig(sf_fig)
+
+  zk_fig = _show_for_type('exp2', 'zookeeper', [2e1, 1.5e2])
+  with PdfPages('results/exp2/zookeeper.pdf'.format(experiment_name)) as pp:
+    pp.savefig(zk_fig)
+
+  sf_fig = _show_for_type('exp2', 'safari', [2e1, 1.5e2])
+  with PdfPages('results/exp2/safari.pdf'.format(experiment_name)) as pp:
+    pp.savefig(sf_fig)
+
   # plt.show()
