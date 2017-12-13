@@ -8,6 +8,40 @@ read latency could be improved through the use of UDP instead of TCP, C++ instea
 clients sending requests to multiple servers and awaiting the first response rather than always
 using the same server.
 
+We can see from Figure 7 that tail latency is fairly good in both systems. In both real world
+settings, ZooKeeper's 99.9\% latency is no more than 2x its average latency. Safari has must lower
+tail latency in the two datacenter deployment because read requests can complete successfully with
+no round trips outside of the west coast datacenter. Even in the three datacenter settings, Safari
+has low tail latency, only $\approx 5\%$ greater than the average latency. This is because reads
+complete successfully as soon as the client receives any two responses, so slow responses from any
+one data center do not matter.
+
+Figure 7 also shows the surprising result that ZooKeeper had worse latency in the two datacenter
+deployment than in the three datacenter deployment. We believe this is probably caused by the west
+coast client accessing the east coast server for reads, although this claim should be investigated
+further.
+
+We claimed that Safari was designed to minimize latency. Indeed, the Figures clearly show that
+Safari has more consistent and much lower tail latency than ZooKeeper. This is not surprising
+considering the Safari's shortcomings. However, the local experiment in particular demonstrates that
+ZooKeeper's latency could be drastically improved by changes to the implementation.
+
+We also found that ZooKeeper performed inconsistently across runs of the same experiment. Typically
+each run would take just a minute or two. Roughly one third of the time, ZooKeeper would crawl at a
+pace such that it would have taken almost an hour to finish the experiment. This may have been
+caused by clients selecting distant servers from which to read, and could probably have been
+resolved through reconfiguration, tuning, or with different client software. However, we were
+surprised that performance was so inconsistent in a seemingly typical deployment.
+
+Overall we found ZooKeeper deployment to be fairly simple. All of the code necessary to download and
+run ZooKeeper on EC2 can be found in roughly 5 lines of shell script and 15 lines of ZooKeeper
+configuration. Although we had to manually tell each ZooKeeper server the IP addresses of all other
+servers, this could be made less painful by spending more and purchasing long-lived IPs instead of
+the transient ones we used, or using managed DNS. Safari was of course also easy to configure.
+Athough the current implementation accepts a list of peer servers, servers never send messages to
+one another. The only necessary configuration is to choose a UDP port on which the servers listen
+for messages.
+
 \begin{figure}[h]
   \caption{Zookeeper Latency on a Single Machine}
   \centering

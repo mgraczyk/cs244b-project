@@ -23,8 +23,7 @@ read latency because clients could deliever results to applications after receiv
 successful response, rather than waiting for a majority. However, we have not completed this
 implementation in yet.
 
-We defer most discussion of implementation details to a video describing the system [8] and the source
-code [9]. As implemented, the system does provides linearizable writes but often becomes permanently
-unavailable when multiple clients write concurrently. Additional message passing would be required
-to resolve these conflicts when they are detected, so the system's latency provides a loose lower
-bound on what could be expected from a ZooKeeper implementation with the same consistency.
+We defer most discussion of implementation details to a video describing the system [8] and the
+source code [9]. Additional message passing would be required to resolve these conflicts when they
+are detected, so the system's latency provides a loose lower bound on what could be expected from a
+ZooKeeper implementation with the same consistency.

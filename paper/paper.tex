@@ -509,11 +509,11 @@ pdfkeywords={distributed systems,zookeeper} }
 \begin{abstract}
 ZooKeeper [1] is a commonly used service for coordinating distributed applications.
 ZooKeeper uses leader-based atomic broadcast for writes, so that all state modifications
-are globally totally ordered, but allows stale reads from any server for high read availability.
-This design trades high read throughput for potentially high write latency.
-Although [1] presents average request latency, tail latency is often far more important in real world applications [2] [3].
+are globally totally ordered, but it allows stale reads from any server for high read availability.
+This design trades high read throughput for potentially high write latency. Unfortunately, the extent of this tradeoff and the magnitude of ZooKeeper's tail latency is unclear.
+Although [1] presents average request latency, tail latency is often far more important in real world applications [2] [3]. In this paper, we remedy this lack of information with three experiments.
 \par
-As a baseline, we also implemented a system called Safari with the same API as ZooKeeper, but
+	As a baseline, we also implemented a system called Safari [9] with the same API as ZooKeeper, but
 specifically designed for lower worst-case write latency.
 We examine the two systems' latency characteristics in a single-machine and two realistic production environments.
 We also offer explanations for their performance differences and design tradeoffs, as well as some
@@ -562,8 +562,15 @@ besides providing a latency baseline for ZooKeeper. The system could be made
 more available by adding a leaderless atomic broadcast algorithm such as
 AllConcur [10] for resolving conflict.
 
-%\section{Conclusion}
-%\input{conclusion.tex}
+\section{Conclusion}
+Despite the importance of tail latency in the design and provisioning of
+real-world systems, and despite ZooKeeper's popularity, we could not find
+resources examining ZooKeepers tail latency in detail. In this paper we
+provided our own measurements in several realistic deployments. We found that
+ZooKeeper behaves mostly as expected, but with surprising inconsistency. Reads
+have much lower tail latency than writes, especially when there is no write
+contention. Tail latency is quite good overall, with 99.9\% latency within 2x
+average latency in both real world settings.
 
 % Put references on a page by themselves when using endfloat and the
 % captionsoff option.
