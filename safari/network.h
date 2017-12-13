@@ -7,8 +7,8 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <string>
 #include <cstring>
+#include <string>
 
 namespace safari {
 namespace {
@@ -92,6 +92,10 @@ class UDPSocket final {
     CHECK(bind(fd_, (sockaddr*)&my_addr_, sizeof(my_addr_)) >= 0);
   }
 
+  UDPSocket() : port_{-1}, fd_(socket(AF_INET, SOCK_DGRAM, 0)) {
+    CHECK(fd_ > 0);
+  }
+
   ~UDPSocket() { close(fd_); }
 
   int receive_one(UDPMessage* message) {
@@ -105,6 +109,8 @@ class UDPSocket final {
     CHECK(message.send(fd_));
     return 1;
   }
+
+  int fd() const { return fd_; }
 
  private:
   const int port_;
