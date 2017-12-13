@@ -16,14 +16,17 @@ def _run_background_client(client_type, hosts, num_nodes):
   get_func = client.get
   set_func = client.set
   np_random_randint = np.random.randint
-  while True:
+  for _ in range(10000):
     r, w = np_random_randint(num_nodes, size=(2,))
-    result = get_func('/latency_test/node_{}'.format(r))
-    if w % 2 == 0:
-      data = result[0][:-1] or b'x'
-    else:
-      data = result[0] + b'x'
-    set_func('/latency_test/node_{}'.format(w), data)
+    try:
+      result = get_func('/latency_test/node_{}'.format(r))
+      if w % 2 == 0:
+        data = result[0][:-1] or b'x'
+      else:
+        data = result[0] + b'x'
+      set_func('/latency_test/node_{}'.format(w), data)
+    except Exception:
+      continue
 
 
 if __name__ == '__main__':

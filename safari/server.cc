@@ -332,7 +332,8 @@ class Server final {
 };
 
 void Server::run_forever() {
-  UDPSocket client_sock{args_.port};
+  UDPSocket send_sock{};
+  UDPSocket recv_sock{args_.port};
   auto request_message = std::make_unique<UDPMessage>();
   auto response_message = std::make_unique<UDPMessage>();
 
@@ -344,8 +345,9 @@ void Server::run_forever() {
   puts("");
   printf("Quorum size is %d\n", quorum_size_);
 
+  //XXX POLL
   for (;;) {
-    CHECK(client_sock.receive_one(request_message.get()));
+    CHECK(recv_sock.receive_one(request_message.get()));
     dprintf("Received %zu byte message from %s: \"%s\"\n",
             request_message->size(), request_message->addr_str().c_str(),
             request_message->data_str().c_str());
@@ -401,7 +403,7 @@ void Server::run_forever() {
         break;
       }
     }
-    CHECK(client_sock.send_one(response.udp_message()));
+    CHECK(recv_sock.send_one(response.udp_message()));
 
     dprintf("Responding to request id %llu with %llu, response id %llu\n",
             request.req().id, response.message()->message_type,

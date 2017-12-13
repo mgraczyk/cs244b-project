@@ -8,14 +8,6 @@ import subprocess
 from tqdm import tqdm
 from kazoo.client import KazooClient
 
-try:
-  from matplotlib import pyplot as plt
-  import seaborn as sns
-  _DO_PLOTS = True
-except ImportError:
-  _DO_PLOTS = False
-  pass
-
 from safari.client import SafariClient
 
 logger = logging.getLogger(__name__)
@@ -27,6 +19,23 @@ def print_latencies(latencies_seconds):
   print('Median Latency =  {} ms'.format(np.median(latencies_ms)))
   print('99% Latency =     {} ms'.format(np.percentile(latencies_ms, 99.)))
   print('99.9% Latency =  {} ms'.format(np.percentile(latencies_ms, 99.9)))
+
+
+def mkdirs_exists_ok(path):
+  try:
+    os.makedirs(path)
+  except OSError:
+    if not os.path.isdir(path):
+      raise
+
+def store_results(name, experiment_name, results):
+  base_path = os.path.join('results', experiment_name)
+  mkdirs_exists_ok(base_path)
+  for kind, result in zip(('read', 'write', 'mixed'), results):
+    np.savetxt(
+        '{}/{}.{}.csv'.format(base_path, name, kind),
+        result,
+        delimiter=',')
 
 
 def test_latency(client_type, hosts):
@@ -96,12 +105,18 @@ def test_latency(client_type, hosts):
   for i in tqdm(range(samples.shape[0])):
     r, w = samples[i]
     before = now()
-    result = get_func('/latency_test/node_{}'.format(r))
+    try:
+      result = get_func('/latency_test/node_{}'.format(r))
+    except Exception:
+      pass
     if w % 2 == 0:
       data = result[0][:-1] or b'x'
     else:
       data = result[0] + b'x'
-    set_func('/latency_test/node_{}'.format(w), data)
+    try:
+      set_func('/latency_test/node_{}'.format(w), data)
+    except Exception:
+      pass
     after = now()
     mixed_latencies.append(after - before)
   print_latencies(mixed_latencies)
@@ -112,26 +127,7 @@ def test_latency(client_type, hosts):
   for proc in procs:
     proc.wait()
 
-  if _DO_PLOTS:
-    f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
-    for ax in (ax1, ax2, ax3):
-      ax.set_xscale('log')
-      ax.set_xlim([5e-5, 5e-2])
-
-    sns.distplot(read_latencies, ax=ax1)
-    sns.distplot(write_latencies, ax=ax2)
-    sns.distplot(mixed_latencies, ax=ax3)
-
-    ax1.set_ylabel('Read')
-    ax2.set_ylabel('Write')
-    ax3.set_ylabel('Mixed')
-
-    f.subplots_adjust(hspace=0)
-    plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
-    ax3.set_xlabel('time (ms)')
-    return ax1
-  else:
-    return (read_latencies, write_latencies, mixed_latencies)
+  return (read_latencies, write_latencies, mixed_latencies)
 
 def main():
   if len(sys.argv) < 2:
@@ -179,21 +175,15 @@ def main():
     raise NotImplementedError(test)
 
   print('Testing Zookeeper latency')
-  zk_fig = test_latency(KazooClient, zk_hosts)
+  zk_results = test_latency(KazooClient, zk_hosts)
+  store_results('zookeeper', test, zk_results)
   print('')
 
   print('Testing Safari latency')
-  sf_fig = test_latency(SafariClient, safari_hosts)
+  sf_results = test_latency(SafariClient, safari_hosts)
+  store_results('safari', test, sf_results)
   print('')
 
-  if _DO_PLOTS:
-    zk_fig.set_title('Zookeeper Latency')
-    sf_fig.set_title('Safari Latency')
-    plt.show()
-  else:
-    for name, results in (('zookeeper', zk_fig), ('safari', sf_fig)):
-      for kind, result in zip(('read', 'write', 'mixed'), results):
-        np.savetxt('{}.{}.csv'.format(name, kind), result, delimiter=',')
 
 if __name__ == '__main__':
   main()
