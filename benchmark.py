@@ -163,7 +163,7 @@ def main():
     ]
   elif test == 'exp2':
     # Client is on zoo1
-    zoo4 = zoo1_public
+    zoo4 = zoo4_public
     zoo2 = zoo2_private
     zoo3 = zoo3_public
     zk_hosts = [
