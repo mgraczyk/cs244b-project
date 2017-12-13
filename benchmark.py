@@ -135,19 +135,13 @@ def main():
   else:
     test = sys.argv[1]
 
-  if sys.platform == 'darwin':
-    # zoo1 = 'ec2-54-183-150-149.us-west-1.compute.amazonaws.com'
-    # zoo2 = 'ec2-54-67-113-246.us-west-1.compute.amazonaws.com'
-    # zoo3 = 'ec2-54-82-116-157.us-west-1.compute.amazonaws.com'
-    zoo1 = '54.183.150.149'
-    zoo2 = '54.67.113.246'
-    zoo3 = '54.82.116.157'
-    zoo4 = '52.34.167.196'
-  else:
-    zoo1 = '172.31.7.146'
-    zoo2 = '172.31.13.236'
-    zoo3 = '54.82.116.157'
-    zoo4 = '52.34.167.196'
+  zoo1_public = '54.183.205.29'
+  zoo2_public = '54.153.9.2'
+  zoo3_public = '54.242.30.248'
+  zoo4_public = '52.34.167.196'
+
+  zoo1_private = '172.31.7.146'
+  zoo2_private = '172.31.13.236'
 
   if test == 'local':
     zk_hosts = ['127.0.0.1:2181', '127.0.0.1:2182', '127.0.0.1:2183']
@@ -156,6 +150,10 @@ def main():
     zk_hosts = ['127.0.0.1:2181']
     safari_hosts = ['127.0.0.1:12000']
   elif test == 'exp1':
+    # Client is on zoo1
+    zoo1 = zoo1_private
+    zoo2 = zoo2_private
+    zoo3 = zoo3_public
     zk_hosts = [
         '{}:2181'.format(zoo1), '{}:2181'.format(zoo2), '{}:2181'.format(zoo3)
     ]
@@ -164,6 +162,10 @@ def main():
         '{}:12000'.format(zoo3)
     ]
   elif test == 'exp2':
+    # Client is on zoo1
+    zoo4 = zoo1_public
+    zoo2 = zoo2_private
+    zoo3 = zoo3_public
     zk_hosts = [
         '{}:2181'.format(zoo4), '{}:2181'.format(zoo2), '{}:2181'.format(zoo3)
     ]
