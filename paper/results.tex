@@ -1,0 +1,31 @@
+
+
+\begin{figure}[h]
+  \caption{Zookeeper Latency on a Single Machine}
+  \centering
+  \includegraphics[width=0.5\textwidth]{../results/local/zookeeper.pdf}
+\end{figure}
+
+\begin{figure}[h]
+  \caption{Safari Latency on a Single Machine}
+  \centering
+  \includegraphics[width=0.5\textwidth]{../results/local/safari.pdf}
+\end{figure}
+
+
+\begin{figure}[h]
+  \caption{Mixed Read-Write Latency Statistics (ms)}
+  \begin{center}
+    \begin{tabular}{| l | l | l | l |}
+    \hline
+    & Average & 99\% & 99.9\% \\ \hline
+    Local ZooKeeper & 13.414 & 26.090 & 33.073 \\ \hline
+    Local Safari & 0.307 & 0.441 & 1.341 \\ \hline\hline
+    1 Datacenter ZooKeeper & 0 & 0 & 0 \\ \hline
+    1 Datacenter Safari & 0 & 0 & 0 \\ \hline\hline
+    2 Datacenters ZooKeeper & 0 & 0 & 0 \\ \hline
+    2 Datacenters Safari & 0 & 0 & 0 \\
+    \hline
+    \end{tabular}
+  \end{center}
+\end{figure}

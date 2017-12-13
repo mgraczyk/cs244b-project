@@ -3,3 +3,6 @@
 *.pyc
 *~
 myid
+*.aux
+*.pdf
+*.log

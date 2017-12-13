@@ -1,0 +1,29 @@
+Distributed systems are notoriously complicated to build. ZooKeeper has become popular largely due
+to its use as a building block to make other distributed systems less complicated. Developers rely
+on ZooKeeper's strong write consistency and high read availibility to offload design complexity and
+make their own systems simpler. For example, FaRM [4] uses ZooKeeper to manage configuration so that the
+authors can focus on high performance design and make rare, hairy failure recovery simple. FaRM
+avoids using ZooKeeper in the critical path, presumably because of ZooKeeper's relatively high
+latency. Apache Kafka [5], a real-time stream processing platform, uses ZooKeeper to manage cluster
+membership, leadership, and various other metadata. As with FaRM, Kafka avoids using ZooKeeper in
+the system's critical path.
+
+Despite ZooKeeper's common usage and many benchmarks reporting its average case latency [6], there
+do not seem to be any reports of the system's tail latency under load. Tail latency is amongst the
+most important performance characteristics in many real-world systems because these systems are
+composed of many interdependent components. With high "fan out", even rare spikes in latency amongst
+a small number of components can cause the overall system to respond slowly on average.  Accurate
+characterization of ZooKeeper's worst case latency is important for potential application developers
+to determine how best to fit ZooKeeper into high fan-out systems.
+
+Certain aspects of ZooKeeper's design could lead to occassionaly high request latency. Some members
+of the community have suggested that latency is primarily determined by the time spent spent by
+followers fetching data from the leader [7]. This characteristic suggests that ZooKeeper could
+potential have lower latency with a leaderless design.
+
+In order to compare ZooKeeper to a low latency baseline, we implemented a system called Safari.
+Safari aims to provide the same consistency guarantees as ZooKeeper with lower tail latency, while
+sacrificing read and write throughput, availability during network partitions, and features. Our
+system is currently incomplete and does not provide linearizability as intended, but serves as an
+optimistic lower bound on latency that could be achieved for any system with ZooKeeper's API and
+consistency.
