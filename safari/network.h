@@ -64,6 +64,7 @@ class UDPMessage final {
   size_t size() const { return size_; };
   const uint8_t* data() const { return buf_; };
   uint8_t* data() { return buf_; };
+
   sockaddr_in addr() const { return addr_; };
 
   string addr_str() const { return sockaddr_to_string(addr_); };
@@ -75,7 +76,7 @@ class UDPMessage final {
   // Disallow copy.
   UDPMessage(UDPMessage&) = delete;
 
-  uint8_t buf_[kBufferSize] = {};
+  uint8_t buf_[kBufferSize] __attribute__((__aligned__(8))) = {};
   size_t size_ = 0;
   sockaddr_in addr_ = {};
 };

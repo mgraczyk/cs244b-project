@@ -1,6 +1,4 @@
 tqdm
 kazoo
 numpy
-matplotlib
-tornado
-seaborn
+pycapnp

@@ -6,3 +6,4 @@ myid
 *.aux
 *.pdf
 *.log
+*.capnp.*

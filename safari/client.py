@@ -1,3 +1,4 @@
+import os
 import sys
 import itertools
 import struct
@@ -12,33 +13,10 @@ if sys.platform == 'darwin':
 else:
   from select import epoll, EPOLLIN, EPOLLOUT, EPOLLERR, EPOLLHUP
 
-_PATH_LEN = 256
-
-_MESSAGE_TYPE_ERROR = struct.pack('<Q', 1)
-_MESSAGE_TYPE_PING = struct.pack('<Q', 100)
-_MESSAGE_TYPE_CREATE = struct.pack('<Q', 101)
-_MESSAGE_TYPE_DELETE = struct.pack('<Q', 102)
-_MESSAGE_TYPE_EXISTS = struct.pack('<Q', 103)
-_MESSAGE_TYPE_GET_DATA = struct.pack('<Q', 104)
-_MESSAGE_TYPE_SET_DATA = struct.pack('<Q', 105)
-_MESSAGE_TYPE_GET_CHILDREN = struct.pack('<Q', 106)
-_MESSAGE_TYPE_SYNC = struct.pack('<Q', 106)
-
-_MESSAGE_TYPE_PING_RESPONSE = struct.pack('<Q', 200)
-_MESSAGE_TYPE_CREATE_RESPONSE = struct.pack('<Q', 201)
-_MESSAGE_TYPE_DELETE_RESPONSE = struct.pack('<Q', 202)
-_MESSAGE_TYPE_EXISTS_RESPONSE = struct.pack('<Q', 203)
-_MESSAGE_TYPE_GET_DATA_RESPONSE = struct.pack('<Q', 204)
-_MESSAGE_TYPE_SET_DATA_RESPONSE = struct.pack('<Q', 205)
-_MESSAGE_TYPE_ET_CHILDREN_RESPONSE = struct.pack('<Q', 206)
-_MESSAGE_TYPE_SYNC_RESPONSE = struct.pack('<Q', 207)
-
-_ERROR_TYPE_UNKNOWN = struct.pack('<Q', 1)
-_ERROR_TYPE_NO_ERROR = struct.pack('<Q', 1)
-_ERROR_TYPE_BAD_REQUEST = struct.pack('<Q', 2)
-_ERROR_TYPE_NOT_IMPLEMENTED = struct.pack('<Q', 3)
-_ERROR_TYPE_NODE_EXISTS = struct.pack('<Q', 4)
-_ERROR_TYPE_NO_NODE = struct.pack('<Q', 5)
+import capnp
+capnp.remove_import_hook()
+types = capnp.load(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "types.capnp"))
 
 
 class SafariException(Exception): pass
@@ -47,25 +25,30 @@ class BadRequestError(SafariException): pass
 class NodeExistsError(SafariException): pass
 class NoNodeError(SafariException): pass
 
+
 _ERROR_TYPES_TO_EXCEPTION = {
-    _ERROR_TYPE_UNKNOWN: UnknownError,
-    _ERROR_TYPE_NO_ERROR: None,
-    _ERROR_TYPE_BAD_REQUEST: BadRequestError,
-    _ERROR_TYPE_NOT_IMPLEMENTED: NotImplementedError,
-    _ERROR_TYPE_NODE_EXISTS: NodeExistsError,
-    _ERROR_TYPE_NO_NODE: NoNodeError
+    0: UnknownError,
+    1: None,
+    2: BadRequestError,
+    3: NotImplementedError,
+    4: NodeExistsError,
+    5: NoNodeError
 }
 
+
 def _err_to_exception(err):
-  exception = _ERROR_TYPES_TO_EXCEPTION[err]
+  exception = _ERROR_TYPES_TO_EXCEPTION[err.raw]
   if exception:
     raise exception
 
 
-def _parse_znode_stat(data):
-  stat = ZnodeStat(*map(b_to_uint, (data[8*i:8*(i + 1)] for i in range(11))))
-  return data[88:], stat
+def _b_to_uint(b):
+  return struct.unpack('<Q', b)[0]
 
+
+def _parse_znode_stat(data):
+  return ZnodeStat(*map(_b_to_uint, (data[8 * i:8 * (i + 1)]
+                                     for i in range(11))))
 
 
 def create_socket(addr):
@@ -74,22 +57,10 @@ def create_socket(addr):
   sock.connect(addr)
   return sock
 
-def b_to_int(b):
-  return struct.unpack('<q', b)[0]
 
-def b_to_uint(b):
-  return struct.unpack('<Q', b)[0]
-
-def int_to_b(i):
-  return struct.pack('<q', i)
-
-def uint_to_b(i):
-  return struct.pack('<Q', i)
-
-def assert_type(message_type, expected_type):
-  if message_type != expected_type:
-    raise Exception(b_to_uint(message_type))
-
+def check_error(response):
+  if response.which() == 'error':
+    _err_to_exception(response.error)
 
 
 class SafariClient(object):
@@ -117,17 +88,6 @@ class SafariClient(object):
   def start(self):
     pass
 
-  def ping(self, message):
-    message_type, data = self._do_send(_MESSAGE_TYPE_PING, b'', message)
-    assert_type(message_type, _MESSAGE_TYPE_PING_RESPONSE)
-    return data
-
-  def create(self, path, data=b''):
-    message_type, data = self._do_send(_MESSAGE_TYPE_CREATE, path,
-                                       uint_to_b(len(data)), data)
-    assert_type(message_type, _MESSAGE_TYPE_CREATE_RESPONSE)
-    return path
-
   def ensure_path(self, path):
     parts = path.split('/')
     base = ''
@@ -143,36 +103,46 @@ class SafariClient(object):
 
     return True
 
+  def ping(self, message):
+    request = types.ZRequestMessage.new_message()
+    request.init('ping').data = message
+    response = self._do_send(request, '', True)
+
+    return response.ping.data
+
+  def create(self, path, data=b''):
+    request = types.ZRequestMessage.new_message()
+    request.init('create').data = data
+    response = self._do_send(request, path, False)
+    return path
+
   def exists(self, path):
-    message_type, data = self._do_send(_MESSAGE_TYPE_EXISTS, path)
-    assert_type(message_type, _MESSAGE_TYPE_EXISTS_RESPONSE)
-    exists = any(data[:8])
-    return exists
+    request = types.ZRequestMessage.new_message()
+    request.exists = None
+    response = self._do_send(request, path, True)
+    return response.exists.exists
 
   def get(self, path):
-    message_type, data = self._do_send(_MESSAGE_TYPE_GET_DATA, path)
-    assert_type(message_type, _MESSAGE_TYPE_GET_DATA_RESPONSE)
-    rest, stat = _parse_znode_stat(data)
-    result_data = rest[8:]
-    assert b_to_uint(rest[:8]) == len(result_data)
-    return result_data, stat
+    request = types.ZRequestMessage.new_message()
+    request.getData = None
+    response = self._do_send(request, path, True)
+    stat = _parse_znode_stat(response.getData.stat)
+    return response.getData.data, stat
 
   def set(self, path, data, version=-1):
-    message_type, data = self._do_send(_MESSAGE_TYPE_SET_DATA, path,
-                                       int_to_b(version),
-                                       uint_to_b(len(data)), data)
-    assert_type(message_type, _MESSAGE_TYPE_SET_DATA_RESPONSE)
-    rest, stat = _parse_znode_stat(data)
-    assert len(rest) == 0
-    return stat
+    request = types.ZRequestMessage.new_message()
+    set_data = request.init('setData')
+    set_data.version = version
+    set_data.data = data
+    response = self._do_send(request, path, False)
+    return _parse_znode_stat(response.setData.stat)
 
-  def _do_send(self, message_type_bytes, path, *args):
-    if isinstance(path, str):
-      path = bytes(path, 'utf-8')
+  def _do_send(self, request, path, is_read):
+    request_id = next(self._id)
 
-    id_bytes = struct.pack('<Q', next(self._id))
-    to_send = b''.join((id_bytes, message_type_bytes, uint_to_b(len(path)),
-                        path, bytes(_PATH_LEN - len(path))) + args)
+    request.id = request_id
+    request.path = path
+    to_send = request.to_bytes()
 
     for s in self._socks:
       try:
@@ -185,7 +155,7 @@ class SafariClient(object):
     received_from = set()
 
     poller = self._poll
-    f = self._quorum
+    f = 1 if is_read else self._quorum
     end = time.time() + 10.
     while sum(len(v) for v in results.values()) < f:
       evts = poller.poll(10.)
@@ -202,27 +172,23 @@ class SafariClient(object):
           except ConnectionRefusedError:
             print('Got ConnectionRefusedError on recv')
             continue
-          request_id, error_type, message_type = (data[:8], data[8:16],
-                                                  data[16:24])
-          if request_id != id_bytes:
+          response = types.ZResponseMessage.from_bytes(data)
+          if response.requestId != request_id:
             continue
 
           # Check whether we've received from this host in case of duplicate messages.
           host = self._fds_to_hosts[fd]
           if host not in received_from:
             received_from.add(host)
-            results[error_type, message_type].append(data[24:])
+            results[response.which()].append(response)
         else:
           raise Exception('Got unexpected event {} on {}'.format(evt, fd))
 
     for k, v in results.items():
       if len(v) >= f:
-        _err_to_exception(k[0])
-        assert all(vv == v[0]
-                   for vv in v[1:]), {(b_to_uint(k[0]), b_to_uint(k[1])): v
-                                      for k, v in results.items()}
-        return k[1], v[0]
-    assert False, {(b_to_uint(k[0]), b_to_uint(k[1])): v
-                   for k, v in results.items()}
+        assert all(vv == v[0] for vv in v[1:]), v
+        check_error(v[0])
+        return v[0]
 
-    return data
+    check_error(response)
+    return response

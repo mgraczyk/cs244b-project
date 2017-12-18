@@ -1,16 +1,18 @@
 TARGET = safari-server
 LIBS = -lm
 CXX = g++
-CXXFLAGS = -Wall -Werror --std=c++1z
-LINKFLAGS = -Wall
+CXXFLAGS = -Wall -Werror --std=c++1z -fdata-sections -ffunction-sections
+LINKFLAGS = -Wall -lcapnp -lkj
 
 ifeq ($(DEBUG),1)
   CXXFLAGS+=-g -O0 -DDEBUG=1
 else
-  CXXFLAGS+=-O3 -DNDEBUG=1
+  CXXFLAGS+=-O3 -DNDEBUG=1 -flto
 endif
+MAKEFLAGS += --no-builtin-rules
 
-.PHONY: default all clean
+.SUFFIXES:
+.PHONY: default all clean capnp
 
 default: $(TARGET)
 all: default
@@ -21,11 +23,17 @@ HEADERS = $(wildcard *.h)
 %.o: %.cc $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-.PRECIOUS: $(TARGET) $(OBJECTS)
+%.capnp.cc %.capnp.h: %.capnp
+	capnp compile $< -oc++
+	mv $*.capnp.c++ $*.capnp.cc
 
-$(TARGET): $(OBJECTS)
+
+.PRECIOUS: $(TARGET) $(OBJECTS) types.capnp.h types.capnp.cc
+
+$(TARGET): types.capnp.o $(OBJECTS)
 	$(CXX) $(OBJECTS) $(LINKFLAGS) $(LIBS) -o $@
 
 clean:
 	-rm -f *.o
 	-rm -f $(TARGET)
+	-rm -f *.capnp.*

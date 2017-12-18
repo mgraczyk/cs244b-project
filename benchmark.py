@@ -49,7 +49,6 @@ def test_latency(client_type, hosts):
   num_write_samples = 50
   num_other_procs = 5
 
-  client.ensure_path('/latency_test/')
 
   node_data = [np.random.bytes(node_size) for _ in range(num_nodes)]
   for i in range(num_nodes):
@@ -105,18 +104,12 @@ def test_latency(client_type, hosts):
   for i in tqdm(range(samples.shape[0])):
     r, w = samples[i]
     before = now()
-    try:
-      result = get_func('/latency_test/node_{}'.format(r))
-    except Exception:
-      pass
+    result = get_func('/latency_test/node_{}'.format(r))
     if w % 2 == 0:
       data = result[0][:-1] or b'x'
     else:
       data = result[0] + b'x'
-    try:
-      set_func('/latency_test/node_{}'.format(w), data)
-    except Exception:
-      pass
+    set_func('/latency_test/node_{}'.format(w), data)
     after = now()
     mixed_latencies.append(after - before)
   print_latencies(mixed_latencies)
