@@ -36,7 +36,7 @@ struct ZRequestMessage {
 
   union {
     unknown @2 :Void;
-    ping @3 :JustData;
+    ping @3 :Text;
     create @4 :JustData;
     deleteCmd @5 :Delete;
     exists @6 :Void;
@@ -62,7 +62,7 @@ struct ZResponseMessage {
   union {
     unknown @1 :Void;
   	error @2 :ZErrorType;
-    ping @3 :JustData;
+    ping @3 :Text;
     create @4 :Void;
     deleteCmd @5 :Void;
     exists @6 :Exists;

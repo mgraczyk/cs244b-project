@@ -36,12 +36,6 @@ _ERROR_TYPES_TO_EXCEPTION = {
 }
 
 
-def _err_to_exception(err):
-  exception = _ERROR_TYPES_TO_EXCEPTION[err.raw]
-  if exception:
-    raise exception
-
-
 def _b_to_uint(b):
   return struct.unpack('<Q', b)[0]
 
@@ -60,7 +54,9 @@ def create_socket(addr):
 
 def check_error(response):
   if response.which() == 'error':
-    _err_to_exception(response.error)
+    exception = _ERROR_TYPES_TO_EXCEPTION[response.error.raw]
+    if exception:
+      raise exception
 
 
 class SafariClient(object):
@@ -105,10 +101,10 @@ class SafariClient(object):
 
   def ping(self, message):
     request = types.ZRequestMessage.new_message()
-    request.init('ping').data = message
+    request.ping = message
     response = self._do_send(request, '', True)
 
-    return response.ping.data
+    return response.ping
 
   def create(self, path, data=b''):
     request = types.ZRequestMessage.new_message()

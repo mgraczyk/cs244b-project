@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
+#include <capnp/compat/json.h>
 #include <kj/string.h>
 #include <netinet/in.h>
 #include <poll.h>
@@ -159,7 +160,6 @@ class ZResponse final {
     auto output_stream =
         kj::ArrayOutputStream({udp_message_->data(), udp_message_->max_size()});
     capnp::writeMessage(output_stream, message_builder_);
-    dprintf("Size is %zu\n", size());
     udp_message_->set_size(output_stream.getArray().size());
     return {};
   }
@@ -296,15 +296,10 @@ class Server final {
   Server(Server&) = delete;
 
   ZResponse::Finished ping(ZRequest& request, ZResponse* response) {
-    const auto data = request.body().getPing().getData();
-    const auto reply_data =
-        string("pingback: ") +
-        string(reinterpret_cast<const char*>(data.begin()), data.size());
+    const auto data = request.body().getPing();
+    const auto reply_data = string("pingback: ") + string(data);
 
-    dprintf("Created reply_data '%s'\n", reply_data.c_str());
-    response->body().initPing().setData(
-        {reinterpret_cast<const uint8_t*>(reply_data.data()),
-         reply_data.size()});
+    response->body().setPing(reply_data);
     return response->done(request);
   }
 
@@ -365,6 +360,7 @@ class Server final {
   const Args args_;
   const int num_nodes_;
   const int quorum_size_;
+  capnp::JsonCodec json_codec_{};
   uint64_t txid_;
   ZTree tree_;
 };
@@ -383,54 +379,53 @@ void Server::run_forever() {
   puts("");
   printf("Quorum size is %d\n", quorum_size_);
 
-  //XXX POLL
+  // XXX POLL
+  //pollfd pollfds[] = {
+    //{
+      //recv_sock.fd(),
+    //},
+  //}
+
   for (;;) {
     CHECK(recv_sock.receive_one(request_message.get()));
-    dprintf("Received %zu byte message from %s: \"%s\"\n",
+    dprintf("\nReceived %zu byte message from %s: \"%s\"\n",
             request_message->size(), request_message->addr_str().c_str(),
             request_message->data_str().c_str());
 
     ZRequest request{std::move(request_message)};
     ZResponse response{std::move(response_message)};
+    dprintf("Got request: %s\n", json_codec_.encode(request.body()).cStr());
 
     switch (request.body().which()) {
       case ZRequestMessage::PING: {
-        dprintf("Got ping request\n");
         ping(request, &response);
         break;
       }
       case ZRequestMessage::CREATE: {
-        dprintf("Got create request\n");
         create(request, &response);
         break;
       }
       case ZRequestMessage::EXISTS: {
-        dprintf("Got exists request\n");
         exists(request, &response);
         break;
       }
       case ZRequestMessage::GET_DATA: {
-        dprintf("Got getData request with id %llu\n", request.id());
         get_data(request, &response);
         break;
       }
       case ZRequestMessage::SET_DATA: {
-        dprintf("Got setData request with id %llu\n", request.id());
         set_data(request, &response);
         break;
       }
       case ZRequestMessage::DELETE_CMD: {
-        dprintf("Got delete request with id %llu\n", request.id());
         response.reply_with_error(request, ZErrorType::NOT_IMPLEMENTED);
         break;
       }
       case ZRequestMessage::GET_CHILDREN: {
-        dprintf("Got getChildren request with id %llu\n", request.id());
         response.reply_with_error(request, ZErrorType::NOT_IMPLEMENTED);
         break;
       }
       case ZRequestMessage::SYNC: {
-        dprintf("Got sync request with id %llu\n", request.id());
         response.reply_with_error(request, ZErrorType::NOT_IMPLEMENTED);
         break;
       }
@@ -441,11 +436,8 @@ void Server::run_forever() {
         break;
       }
     }
+    dprintf("Responding with: %s\n", json_codec_.encode(response.reader()).cStr());
     CHECK(recv_sock.send_one(response.udp_message()));
-
-    dprintf("Responding to request id %llu with %d, response id %llu\n",
-            request.id(), response.body().which(),
-            response.reader().getRequestId());
 
     request_message = request.release_udp_message();
     response_message = response.release_udp_message();

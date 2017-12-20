@@ -2,7 +2,7 @@ TARGET = safari-server
 LIBS = -lm
 CXX = g++
 CXXFLAGS = -Wall -Werror --std=c++1z -fdata-sections -ffunction-sections
-LINKFLAGS = -Wall -lcapnp -lkj
+LINKFLAGS = -Wall -lcapnp -lkj -lcapnp-json
 
 ifeq ($(DEBUG),1)
   CXXFLAGS+=-g -O0 -DDEBUG=1
@@ -31,7 +31,7 @@ HEADERS = $(wildcard *.h)
 .PRECIOUS: $(TARGET) $(OBJECTS) types.capnp.h types.capnp.cc
 
 $(TARGET): types.capnp.o $(OBJECTS)
-	$(CXX) $(OBJECTS) $(LINKFLAGS) $(LIBS) -o $@
+	$(CXX) $^ $(LINKFLAGS) $(LIBS) -o $@
 
 clean:
 	-rm -f *.o
